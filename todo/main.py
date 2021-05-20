@@ -3,12 +3,21 @@ from flask_restplus import Api, Resource, fields, reqparse
 import pymysql
 import datetime
 
-
 app = Flask(__name__)
-api = Api(app, version='1.0', title='TodoMVC API',
-    description='A simple TodoMVC API',
-)
 
+# authorizations={
+#      'oauth2': {
+#         'type': 'oauth2',
+#         'in': 'header',
+#         'flow': 'password',
+#          'tokenUrl': '/authToken',
+#         'authorizationUrl': 'https://somewhere.com/auth',
+#         'scopes': {
+#             'read': 'Grant read-only access',
+#             'write': 'Grant read-write access',
+#         }
+#      }
+# }
 #Connect to the database
 connection = pymysql.connect(host='localhost',
                              user='krishna',
@@ -18,32 +27,34 @@ connection = pymysql.connect(host='localhost',
 
 '''
 Database Schema:                                                                                                            
-tasks table                                                                   user table:
-+----------+---------------+------+-----+-------------+----------------+      +----------+--------------+------+-----+---------+-------+     
-| Field    | Type          | Null | Key | Default     | Extra          |      | Field    | Type         | Null | Key | Default | Extra |
-+----------+---------------+------+-----+-------------+----------------+      +----------+--------------+------+-----+---------+-------+
-| id       | int(11)       | NO   | PRI | NULL        | auto_increment |      | username | varchar(200) | NO   | PRI | NULL    |       |
-| task     | varchar(1000) | NO   |     | NULL        |                |      | password | varchar(200) | NO   |     | NULL    |       |
-| due_date | date          | YES  |     | NULL        |                |      | role     | varchar(20)  | YES  |     | read    |       |
-| status   | varchar(20)   | NO   |     | Not Started |                |      +----------+--------------+------+-----+---------+-------+
+tasks table                                                                   
++----------+---------------+------+-----+-------------+----------------+         
+| Field    | Type          | Null | Key | Default     | Extra          |      
++----------+---------------+------+-----+-------------+----------------+      
+| id       | int(11)       | NO   | PRI | NULL        | auto_increment |     
+| task     | varchar(1000) | NO   |     | NULL        |                |      
+| due_date | date          | YES  |     | NULL        |                |        
+| status   | varchar(20)   | NO   |     | Not Started |                |      
 +----------+---------------+------+-----+-------------+----------------+
 '''
 
+api = Api(version='1.0', title='TodoMVC API',
+    description='A simple TodoMVC API',
+    # authorizations=authorizations
+)
+# api.add_namespace(ns1)                 #Adding user namespace to the api
 
 ns = api.namespace('todos', description='TODO operations')
-
 todo = api.model('Todo', {
     'id': fields.Integer(readonly=True, description='The task unique identifier'),
     'task': fields.String(required=True, description='The task details'),
     'due_date':fields.Date(required=True, description='The date when this task should be finished',dt_format='iso8601'),
     'status':fields.String(required=True,description='The status of the task. Can take values- Not started, In progress, Finished',default='Not Started')
 })
+api.add_namespace(ns)
 
-user=api.model('User',{
-    'username':fields.String(required=True,description='Unique username of the user'),
-    'password':fields.String(required=True,description='Password of the user'),
-    'role':fields.String(required=True,description="Read or Write access. Can take values- 'read' or 'write'",default='read')
-})
+api.init_app(app)
+
 
 #Check if the string date_text is a valid date in iso format
 def isDateValid(date_text):
@@ -148,19 +159,20 @@ class TodoList(Resource):
     @ns.marshal_list_with(todo)
     def get(self):
         '''List all tasks'''
+        # print(current_user )
         return DAO.getAll()
 
     @ns.doc('create_todo')
     @ns.expect(todo)            #Post request expects a todo JSON object
     @ns.marshal_with(todo, code=201)
-    def post(self):
+    def post(self): 
         '''Create a new task'''
-        data=api.payload
-        #If status doesn't match expected value 
-        if(data['status'] not in ['Finished','Not Started','In Progress']):         
+        data=api.payload 
+        
+        if(data['status'] not in ['Finished','Not Started','In Progress']):    #If status doesn't match expected value   
             return {"message":"Invalid status value provided"}, 422
-        #If date provided is not a valid date
-        if(not isDateValid(data['due_date'])):
+       
+        if(not isDateValid(data['due_date'])):           #If date provided is not a valid date
             return {"message":"Invalid date value provided"}, 422
 
         return DAO.create(api.payload), 201
@@ -252,6 +264,12 @@ class TodoStatus(Resource):
             return {"message":"Invalid value provided"}, 422
 
         return DAO.update(id,args['status'],True)
+
+
+# @api.route('/authToken')
+# class Auth(Resource):
+#     def get(self):
+#         pass
 
 if __name__== "__main__":
     app.run(debug=True)
