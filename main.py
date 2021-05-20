@@ -1,6 +1,8 @@
 from flask import Flask, request
 from flask_restplus import Api, Resource, fields, reqparse
 import pymysql
+import datetime
+
 
 app = Flask(__name__)
 api = Api(app, version='1.0', title='TodoMVC API',
@@ -15,16 +17,18 @@ connection = pymysql.connect(host='localhost',
                              cursorclass=pymysql.cursors.DictCursor)
 
 '''
-Database Schema: 
-+----------+---------------+------+-----+-------------+----------------+
-| Field    | Type          | Null | Key | Default     | Extra          |
-+----------+---------------+------+-----+-------------+----------------+
-| id       | int(11)       | NO   | PRI | NULL        | auto_increment |
-| task     | varchar(1000) | NO   |     | NULL        |                |
-| due_date | date          | YES  |     | NULL        |                |
-| status   | varchar(20)   | NO   |     | Not Started |                |
+Database Schema:                                                                                                            
+tasks table                                                                   user table:
++----------+---------------+------+-----+-------------+----------------+      +----------+--------------+------+-----+---------+-------+     
+| Field    | Type          | Null | Key | Default     | Extra          |      | Field    | Type         | Null | Key | Default | Extra |
++----------+---------------+------+-----+-------------+----------------+      +----------+--------------+------+-----+---------+-------+
+| id       | int(11)       | NO   | PRI | NULL        | auto_increment |      | username | varchar(200) | NO   | PRI | NULL    |       |
+| task     | varchar(1000) | NO   |     | NULL        |                |      | password | varchar(200) | NO   |     | NULL    |       |
+| due_date | date          | YES  |     | NULL        |                |      | role     | varchar(20)  | YES  |     | read    |       |
+| status   | varchar(20)   | NO   |     | Not Started |                |      +----------+--------------+------+-----+---------+-------+
 +----------+---------------+------+-----+-------------+----------------+
 '''
+
 
 ns = api.namespace('todos', description='TODO operations')
 
@@ -34,6 +38,20 @@ todo = api.model('Todo', {
     'due_date':fields.Date(required=True, description='The date when this task should be finished',dt_format='iso8601'),
     'status':fields.String(required=True,description='The status of the task. Can take values- Not started, In progress, Finished',default='Not Started')
 })
+
+user=api.model('User',{
+    'username':fields.String(required=True,description='Unique username of the user'),
+    'password':fields.String(required=True,description='Password of the user'),
+    'role':fields.String(required=True,description="Read or Write access. Can take values- 'read' or 'write'",default='read')
+})
+
+#Check if the string date_text is a valid date in iso format
+def isDateValid(date_text):
+    try:
+        datetime.datetime.strptime(date_text, '%Y-%m-%d')
+        return True
+    except :
+        return False
 
 #Helper class for operations on todo list
 class TodoDAO(object):
@@ -137,6 +155,14 @@ class TodoList(Resource):
     @ns.marshal_with(todo, code=201)
     def post(self):
         '''Create a new task'''
+        data=api.payload
+        #If status doesn't match expected value 
+        if(data['status'] not in ['Finished','Not Started','In Progress']):         
+            return {"message":"Invalid status value provided"}, 422
+        #If date provided is not a valid date
+        if(not isDateValid(data['due_date'])):
+            return {"message":"Invalid date value provided"}, 422
+
         return DAO.create(api.payload), 201
 
 #Parser for due date 
