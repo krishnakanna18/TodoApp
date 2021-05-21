@@ -1,3 +1,6 @@
+'''
+Python Version: 3.8
+'''
 from flask import Flask, request
 from flask_restplus import Api, Resource, fields, reqparse, marshal
 import pymysql
@@ -45,7 +48,7 @@ user table
 api = Api(version='1.0', title='TodoMVC API',
     description='A simple TodoMVC API',
     security='basic',
-    authorizations=authorizations,
+    authorizations=authorizations
 )
 
 ns = api.namespace('todos', description='TODO operations')
@@ -62,7 +65,6 @@ api.init_app(app)
 invalid=api.model('Failed',{                    #Model for marshal decorator indicating invalid credentials
     'message':fields.String(default='Invalid Credentials')
 })
-
 
 
 #Check if the string date_text is a valid date in iso format
@@ -94,14 +96,14 @@ class UserDAO(object):
 
     def isAllowed(self,user,role):                              #Check user's role against the caller method's required access
         if(user==None):
-            return {"message":"Invalid Credentials"}, 401
+            return {"message":"Credentials Not Provided"}, 401
         if(self.login(user)==0):                                #If user login is not success return 0
             return {"message":"Invalid Credentials"}, 401
 
         if(self.user['role']=='read' and role=='write'):        #If login success but user doesn't have access
             return {"message":"Access Restricted"},403
 
-        return 1,200                        #When login is success and allowed to access method
+        return 1,200                        #When login is success and user is allowed to access method
             
 
 #Helper class for operations on todo list
