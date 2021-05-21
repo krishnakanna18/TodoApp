@@ -2,8 +2,7 @@
 Time complexity is O(n). n - number of students.
 Since the inner loop runs a constant number of times(6 in this case) everytime running time is 6*n which is O(n).
 
-Space complexity is O(n).
-Since the dictionary always consists of 6 items space complexity is n - dictionary to store the students.
+Since the dictionary always consists of 6 items space complexity is constant O(1).
 '''
 
 import csv
