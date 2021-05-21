@@ -6,6 +6,7 @@ from flask_restplus import Api, Resource, fields, reqparse, marshal
 import pymysql
 import datetime
 from base64 import b64decode, b64encode
+from config import db_username, db_password
 
 app = Flask(__name__)
 
@@ -18,8 +19,8 @@ authorizations={
 }
 #Connect to the database
 connection = pymysql.connect(host='localhost',
-                             user='krishna',
-                             password='0mysqldb@Krishna',
+                             user=db_username,
+                             password=db_password,
                              database='todo',
                              cursorclass=pymysql.cursors.DictCursor)
 
